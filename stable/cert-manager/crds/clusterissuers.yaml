@@ -1,9 +1,10 @@
+---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: clusterissuers.cert-manager.io
   annotations:
-    helm.sh/hook: crd-install
+    cert-manager.io/inject-ca-from-secret: cert-manager/cert-manager-webhook-tls
+  name: clusterissuers.cert-manager.io
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.conditions[?(@.type=="Ready")].status
@@ -21,7 +22,6 @@ spec:
     name: Age
     type: date
   group: cert-manager.io
-  preserveUnknownFields: false
   names:
     kind: ClusterIssuer
     listKind: ClusterIssuerList
@@ -32,7 +32,6 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      type: object
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -49,35 +48,25 @@ spec:
         spec:
           description: IssuerSpec is the specification of an Issuer. This includes
             any configuration required for the issuer.
-          type: object
           properties:
             acme:
               description: ACMEIssuer contains the specification for an ACME issuer
-              type: object
-              required:
-              - privateKeySecretRef
-              - server
               properties:
                 email:
                   description: Email is the email for this account
                   type: string
                 externalAccountBinding:
-                  description: ExternalAcccountBinding is a reference to a CA external
+                  description: ExternalAccountBinding is a reference to a CA external
                     account of the ACME server.
-                  type: object
-                  required:
-                  - keyAlgorithm
-                  - keyID
-                  - keySecretRef
                   properties:
                     keyAlgorithm:
                       description: keyAlgorithm is the MAC key algorithm that the
                         key is used for. Valid values are "HS256", "HS384" and "HS512".
-                      type: string
                       enum:
                       - HS256
                       - HS384
                       - HS512
+                      type: string
                     keyID:
                       description: keyID is the ID of the CA key that the External
                         Account is bound to.
@@ -91,9 +80,6 @@ spec:
                         with the External Account Binding keyID above. The secret
                         key stored in the Secret **must** be un-padded, base64 URL
                         encoded data.
-                      type: object
-                      required:
-                      - name
                       properties:
                         key:
                           description: The key of the secret to select from. Must
@@ -103,12 +89,17 @@ spec:
                           description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                             TODO: Add other useful fields. apiVersion, kind, uid?'
                           type: string
+                      required:
+                      - name
+                      type: object
+                  required:
+                  - keyAlgorithm
+                  - keyID
+                  - keySecretRef
+                  type: object
                 privateKeySecretRef:
                   description: PrivateKey is the name of a secret containing the private
                     key for this user account.
-                  type: object
-                  required:
-                  - name
                   properties:
                     key:
                       description: The key of the secret to select from. Must be a
@@ -118,6 +109,9 @@ spec:
                       description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                         TODO: Add other useful fields. apiVersion, kind, uid?'
                       type: string
+                  required:
+                  - name
+                  type: object
                 server:
                   description: Server is the ACME server URL
                   type: string
@@ -127,25 +121,15 @@ spec:
                 solvers:
                   description: Solvers is a list of challenge solvers that will be
                     used to solve ACME challenges for the matching domains.
-                  type: array
                   items:
-                    type: object
                     properties:
                       dns01:
-                        type: object
                         properties:
                           acmedns:
                             description: ACMEIssuerDNS01ProviderAcmeDNS is a structure
                               containing the configuration for ACME-DNS servers
-                            type: object
-                            required:
-                            - accountSecretRef
-                            - host
                             properties:
                               accountSecretRef:
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -157,83 +141,80 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
                               host:
                                 type: string
+                            required:
+                            - accountSecretRef
+                            - host
+                            type: object
                           akamai:
                             description: ACMEIssuerDNS01ProviderAkamai is a structure
                               containing the DNS configuration for Akamai DNS—Zone
                               Record Management API
-                            type: object
+                            properties:
+                              accessTokenSecretRef:
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.
+                                      Must be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info:
+                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind,
+                                      uid?'
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                              clientSecretSecretRef:
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.
+                                      Must be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info:
+                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind,
+                                      uid?'
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                              clientTokenSecretRef:
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.
+                                      Must be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info:
+                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind,
+                                      uid?'
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                              serviceConsumerDomain:
+                                type: string
                             required:
                             - accessTokenSecretRef
                             - clientSecretSecretRef
                             - clientTokenSecretRef
                             - serviceConsumerDomain
-                            properties:
-                              accessTokenSecretRef:
-                                type: object
-                                required:
-                                - name
-                                properties:
-                                  key:
-                                    description: The key of the secret to select from.
-                                      Must be a valid secret key.
-                                    type: string
-                                  name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
-                                    type: string
-                              clientSecretSecretRef:
-                                type: object
-                                required:
-                                - name
-                                properties:
-                                  key:
-                                    description: The key of the secret to select from.
-                                      Must be a valid secret key.
-                                    type: string
-                                  name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
-                                    type: string
-                              clientTokenSecretRef:
-                                type: object
-                                required:
-                                - name
-                                properties:
-                                  key:
-                                    description: The key of the secret to select from.
-                                      Must be a valid secret key.
-                                    type: string
-                                  name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
-                                    type: string
-                              serviceConsumerDomain:
-                                type: string
+                            type: object
                           azuredns:
                             description: ACMEIssuerDNS01ProviderAzureDNS is a structure
                               containing the configuration for Azure DNS
-                            type: object
-                            required:
-                            - clientID
-                            - clientSecretSecretRef
-                            - resourceGroupName
-                            - subscriptionID
-                            - tenantID
                             properties:
                               clientID:
                                 type: string
                               clientSecretSecretRef:
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -245,13 +226,16 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
                               environment:
-                                type: string
                                 enum:
                                 - AzurePublicCloud
                                 - AzureChinaCloud
                                 - AzureGermanCloud
                                 - AzureUSGovernmentCloud
+                                type: string
                               hostedZoneName:
                                 type: string
                               resourceGroupName:
@@ -260,19 +244,20 @@ spec:
                                 type: string
                               tenantID:
                                 type: string
+                            required:
+                            - clientID
+                            - clientSecretSecretRef
+                            - resourceGroupName
+                            - subscriptionID
+                            - tenantID
+                            type: object
                           clouddns:
                             description: ACMEIssuerDNS01ProviderCloudDNS is a structure
                               containing the DNS configuration for Google Cloud DNS
-                            type: object
-                            required:
-                            - project
                             properties:
                               project:
                                 type: string
                               serviceAccountSecretRef:
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -284,17 +269,17 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - project
+                            type: object
                           cloudflare:
                             description: ACMEIssuerDNS01ProviderCloudflare is a structure
                               containing the DNS configuration for Cloudflare
-                            type: object
-                            required:
-                            - email
                             properties:
                               apiKeySecretRef:
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -306,10 +291,10 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
                               apiTokenSecretRef:
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -321,27 +306,27 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
                               email:
                                 type: string
+                            required:
+                            - email
+                            type: object
                           cnameStrategy:
                             description: CNAMEStrategy configures how the DNS01 provider
                               should handle CNAME records when found in DNS zones.
-                            type: string
                             enum:
                             - None
                             - Follow
+                            type: string
                           digitalocean:
                             description: ACMEIssuerDNS01ProviderDigitalOcean is a
                               structure containing the DNS configuration for DigitalOcean
                               Domains
-                            type: object
-                            required:
-                            - tokenSecretRef
                             properties:
                               tokenSecretRef:
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -353,12 +338,15 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - tokenSecretRef
+                            type: object
                           rfc2136:
                             description: ACMEIssuerDNS01ProviderRFC2136 is a structure
                               containing the configuration for RFC2136 DNS
-                            type: object
-                            required:
-                            - nameserver
                             properties:
                               nameserver:
                                 description: 'The IP address of the DNS supporting
@@ -381,9 +369,6 @@ spec:
                                 description: The name of the secret containing the
                                   TSIG value. If ``tsigKeyName`` is defined, this
                                   field is required.
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -395,12 +380,15 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - nameserver
+                            type: object
                           route53:
                             description: ACMEIssuerDNS01ProviderRoute53 is a structure
                               containing the Route 53 configuration for AWS
-                            type: object
-                            required:
-                            - region
                             properties:
                               accessKeyID:
                                 description: 'The AccessKeyID is used for authentication.
@@ -427,9 +415,6 @@ spec:
                                 description: The SecretAccessKey is used for authentication.
                                   If not set we fall-back to using env vars, shared
                                   credentials file or AWS Instance metadata https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials
-                                type: object
-                                required:
-                                - name
                                 properties:
                                   key:
                                     description: The key of the secret to select from.
@@ -441,14 +426,16 @@ spec:
                                       TODO: Add other useful fields. apiVersion, kind,
                                       uid?'
                                     type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - region
+                            type: object
                           webhook:
                             description: ACMEIssuerDNS01ProviderWebhook specifies
                               configuration for a webhook DNS01 provider, including
                               where to POST ChallengePayload resources.
-                            type: object
-                            required:
-                            - groupName
-                            - solverName
                             properties:
                               config:
                                 description: Additional configuration that should
@@ -472,6 +459,11 @@ spec:
                                   in the webhook provider implementation. This will
                                   typically be the name of the provider, e.g. 'cloudflare'.
                                 type: string
+                            required:
+                            - groupName
+                            - solverName
+                            type: object
+                        type: object
                       http01:
                         description: ACMEChallengeSolverHTTP01 contains configuration
                           detailing how to solve HTTP01 challenges within a Kubernetes
@@ -479,7 +471,6 @@ spec:
                           'routes' of some description that configure ingress controllers
                           to direct traffic to 'solver pods', which are responsible
                           for responding to the ACME server's HTTP requests.
-                        type: object
                         properties:
                           ingress:
                             description: The ingress based HTTP01 challenge solver
@@ -487,7 +478,6 @@ spec:
                               resources in order to route requests for '/.well-known/acme-challenge/XYZ'
                               to 'challenge solver' pods that are provisioned by cert-manager
                               for each Challenge to be completed.
-                            type: object
                             properties:
                               class:
                                 description: The ingress class to use when creating
@@ -506,7 +496,6 @@ spec:
                               podTemplate:
                                 description: Optional pod template used to configure
                                   the ACME challenge solver pods used for HTTP01 challenges
-                                type: object
                                 properties:
                                   metadata:
                                     description: ObjectMeta overrides for the pod
@@ -514,36 +503,33 @@ spec:
                                       and 'annotations' fields may be set. If labels
                                       or annotations overlap with in-built values,
                                       the values here will override the in-built values.
-                                    type: object
                                     properties:
                                       annotations:
+                                        additionalProperties:
+                                          type: string
                                         description: Annotations that should be added
                                           to the create ACME HTTP01 solver pods.
                                         type: object
+                                      labels:
                                         additionalProperties:
                                           type: string
-                                      labels:
                                         description: Labels that should be added to
                                           the created ACME HTTP01 solver pods.
                                         type: object
-                                        additionalProperties:
-                                          type: string
+                                    type: object
                                   spec:
                                     description: PodSpec defines overrides for the
                                       HTTP01 challenge solver pod. Only the 'nodeSelector',
                                       'affinity' and 'tolerations' fields are supported
                                       currently. All other fields will be ignored.
-                                    type: object
                                     properties:
                                       affinity:
                                         description: If specified, the pod's scheduling
                                           constraints
-                                        type: object
                                         properties:
                                           nodeAffinity:
                                             description: Describes node affinity scheduling
                                               rules for the pod.
-                                            type: object
                                             properties:
                                               preferredDuringSchedulingIgnoredDuringExecution:
                                                 description: The scheduler will prefer
@@ -564,7 +550,6 @@ spec:
                                                   corresponding matchExpressions;
                                                   the node(s) with the highest sum
                                                   are the most preferred.
-                                                type: array
                                                 items:
                                                   description: An empty preferred
                                                     scheduling term matches all objects
@@ -572,22 +557,16 @@ spec:
                                                     a no-op). A null preferred scheduling
                                                     term matches no objects (i.e.
                                                     is also a no-op).
-                                                  type: object
-                                                  required:
-                                                  - preference
-                                                  - weight
                                                   properties:
                                                     preference:
                                                       description: A node selector
                                                         term, associated with the
                                                         corresponding weight.
-                                                      type: object
                                                       properties:
                                                         matchExpressions:
                                                           description: A list of node
                                                             selector requirements
                                                             by node's labels.
-                                                          type: array
                                                           items:
                                                             description: A node selector
                                                               requirement is a selector
@@ -595,10 +574,6 @@ spec:
                                                               a key, and an operator
                                                               that relates the key
                                                               and values.
-                                                            type: object
-                                                            required:
-                                                            - key
-                                                            - operator
                                                             properties:
                                                               key:
                                                                 description: The label
@@ -634,14 +609,18 @@ spec:
                                                                   array is replaced
                                                                   during a strategic
                                                                   merge patch.
-                                                                type: array
                                                                 items:
                                                                   type: string
+                                                                type: array
+                                                            required:
+                                                            - key
+                                                            - operator
+                                                            type: object
+                                                          type: array
                                                         matchFields:
                                                           description: A list of node
                                                             selector requirements
                                                             by node's fields.
-                                                          type: array
                                                           items:
                                                             description: A node selector
                                                               requirement is a selector
@@ -649,10 +628,6 @@ spec:
                                                               a key, and an operator
                                                               that relates the key
                                                               and values.
-                                                            type: object
-                                                            required:
-                                                            - key
-                                                            - operator
                                                             properties:
                                                               key:
                                                                 description: The label
@@ -688,16 +663,27 @@ spec:
                                                                   array is replaced
                                                                   during a strategic
                                                                   merge patch.
-                                                                type: array
                                                                 items:
                                                                   type: string
+                                                                type: array
+                                                            required:
+                                                            - key
+                                                            - operator
+                                                            type: object
+                                                          type: array
+                                                      type: object
                                                     weight:
                                                       description: Weight associated
                                                         with matching the corresponding
                                                         nodeSelectorTerm, in the range
                                                         1-100.
-                                                      type: integer
                                                       format: int32
+                                                      type: integer
+                                                  required:
+                                                  - preference
+                                                  - weight
+                                                  type: object
+                                                type: array
                                               requiredDuringSchedulingIgnoredDuringExecution:
                                                 description: If the affinity requirements
                                                   specified by this field are not
@@ -709,15 +695,11 @@ spec:
                                                   (e.g. due to an update), the system
                                                   may or may not try to eventually
                                                   evict the pod from its node.
-                                                type: object
-                                                required:
-                                                - nodeSelectorTerms
                                                 properties:
                                                   nodeSelectorTerms:
                                                     description: Required. A list
                                                       of node selector terms. The
                                                       terms are ORed.
-                                                    type: array
                                                     items:
                                                       description: A null or empty
                                                         node selector term matches
@@ -725,13 +707,11 @@ spec:
                                                         of them are ANDed. The TopologySelectorTerm
                                                         type implements a subset of
                                                         the NodeSelectorTerm.
-                                                      type: object
                                                       properties:
                                                         matchExpressions:
                                                           description: A list of node
                                                             selector requirements
                                                             by node's labels.
-                                                          type: array
                                                           items:
                                                             description: A node selector
                                                               requirement is a selector
@@ -739,10 +719,6 @@ spec:
                                                               a key, and an operator
                                                               that relates the key
                                                               and values.
-                                                            type: object
-                                                            required:
-                                                            - key
-                                                            - operator
                                                             properties:
                                                               key:
                                                                 description: The label
@@ -778,14 +754,18 @@ spec:
                                                                   array is replaced
                                                                   during a strategic
                                                                   merge patch.
-                                                                type: array
                                                                 items:
                                                                   type: string
+                                                                type: array
+                                                            required:
+                                                            - key
+                                                            - operator
+                                                            type: object
+                                                          type: array
                                                         matchFields:
                                                           description: A list of node
                                                             selector requirements
                                                             by node's fields.
-                                                          type: array
                                                           items:
                                                             description: A node selector
                                                               requirement is a selector
@@ -793,10 +773,6 @@ spec:
                                                               a key, and an operator
                                                               that relates the key
                                                               and values.
-                                                            type: object
-                                                            required:
-                                                            - key
-                                                            - operator
                                                             properties:
                                                               key:
                                                                 description: The label
@@ -832,15 +808,25 @@ spec:
                                                                   array is replaced
                                                                   during a strategic
                                                                   merge patch.
-                                                                type: array
                                                                 items:
                                                                   type: string
+                                                                type: array
+                                                            required:
+                                                            - key
+                                                            - operator
+                                                            type: object
+                                                          type: array
+                                                      type: object
+                                                    type: array
+                                                required:
+                                                - nodeSelectorTerms
+                                                type: object
+                                            type: object
                                           podAffinity:
                                             description: Describes pod affinity scheduling
                                               rules (e.g. co-locate this pod in the
                                               same node, zone, etc. as some other
                                               pod(s)).
-                                            type: object
                                             properties:
                                               preferredDuringSchedulingIgnoredDuringExecution:
                                                 description: The scheduler will prefer
@@ -861,30 +847,21 @@ spec:
                                                   which matches the corresponding
                                                   podAffinityTerm; the node(s) with
                                                   the highest sum are the most preferred.
-                                                type: array
                                                 items:
                                                   description: The weights of all
                                                     of the matched WeightedPodAffinityTerm
                                                     fields are added per-node to find
                                                     the most preferred node(s)
-                                                  type: object
-                                                  required:
-                                                  - podAffinityTerm
-                                                  - weight
                                                   properties:
                                                     podAffinityTerm:
                                                       description: Required. A pod
                                                         affinity term, associated
                                                         with the corresponding weight.
-                                                      type: object
-                                                      required:
-                                                      - topologyKey
                                                       properties:
                                                         labelSelector:
                                                           description: A label query
                                                             over a set of resources,
                                                             in this case pods.
-                                                          type: object
                                                           properties:
                                                             matchExpressions:
                                                               description: matchExpressions
@@ -892,7 +869,6 @@ spec:
                                                                 selector requirements.
                                                                 The requirements are
                                                                 ANDed.
-                                                              type: array
                                                               items:
                                                                 description: A label
                                                                   selector requirement
@@ -901,10 +877,6 @@ spec:
                                                                   a key, and an operator
                                                                   that relates the
                                                                   key and values.
-                                                                type: object
-                                                                required:
-                                                                - key
-                                                                - operator
                                                                 properties:
                                                                   key:
                                                                     description: key
@@ -940,10 +912,17 @@ spec:
                                                                       replaced during
                                                                       a strategic
                                                                       merge patch.
-                                                                    type: array
                                                                     items:
                                                                       type: string
+                                                                    type: array
+                                                                required:
+                                                                - key
+                                                                - operator
+                                                                type: object
+                                                              type: array
                                                             matchLabels:
+                                                              additionalProperties:
+                                                                type: string
                                                               description: matchLabels
                                                                 is a map of {key,value}
                                                                 pairs. A single {key,value}
@@ -957,8 +936,7 @@ spec:
                                                                 "value". The requirements
                                                                 are ANDed.
                                                               type: object
-                                                              additionalProperties:
-                                                                type: string
+                                                          type: object
                                                         namespaces:
                                                           description: namespaces
                                                             specifies which namespaces
@@ -966,9 +944,9 @@ spec:
                                                             to (matches against);
                                                             null or empty list means
                                                             "this pod's namespace"
-                                                          type: array
                                                           items:
                                                             type: string
+                                                          type: array
                                                         topologyKey:
                                                           description: This pod should
                                                             be co-located (affinity)
@@ -985,13 +963,21 @@ spec:
                                                             is running. Empty topologyKey
                                                             is not allowed.
                                                           type: string
+                                                      required:
+                                                      - topologyKey
+                                                      type: object
                                                     weight:
                                                       description: weight associated
                                                         with matching the corresponding
                                                         podAffinityTerm, in the range
                                                         1-100.
-                                                      type: integer
                                                       format: int32
+                                                      type: integer
+                                                  required:
+                                                  - podAffinityTerm
+                                                  - weight
+                                                  type: object
+                                                type: array
                                               requiredDuringSchedulingIgnoredDuringExecution:
                                                 description: If the affinity requirements
                                                   specified by this field are not
@@ -1007,7 +993,6 @@ spec:
                                                   the lists of nodes corresponding
                                                   to each podAffinityTerm are intersected,
                                                   i.e. all terms must be satisfied.
-                                                type: array
                                                 items:
                                                   description: Defines a set of pods
                                                     (namely those matching the labelSelector
@@ -1019,22 +1004,17 @@ spec:
                                                     of the label with key <topologyKey>
                                                     matches that of any node on which
                                                     a pod of the set of pods is running
-                                                  type: object
-                                                  required:
-                                                  - topologyKey
                                                   properties:
                                                     labelSelector:
                                                       description: A label query over
                                                         a set of resources, in this
                                                         case pods.
-                                                      type: object
                                                       properties:
                                                         matchExpressions:
                                                           description: matchExpressions
                                                             is a list of label selector
                                                             requirements. The requirements
                                                             are ANDed.
-                                                          type: array
                                                           items:
                                                             description: A label selector
                                                               requirement is a selector
@@ -1042,10 +1022,6 @@ spec:
                                                               a key, and an operator
                                                               that relates the key
                                                               and values.
-                                                            type: object
-                                                            required:
-                                                            - key
-                                                            - operator
                                                             properties:
                                                               key:
                                                                 description: key is
@@ -1076,10 +1052,17 @@ spec:
                                                                   array is replaced
                                                                   during a strategic
                                                                   merge patch.
-                                                                type: array
                                                                 items:
                                                                   type: string
+                                                                type: array
+                                                            required:
+                                                            - key
+                                                            - operator
+                                                            type: object
+                                                          type: array
                                                         matchLabels:
+                                                          additionalProperties:
+                                                            type: string
                                                           description: matchLabels
                                                             is a map of {key,value}
                                                             pairs. A single {key,value}
@@ -1092,17 +1075,16 @@ spec:
                                                             only "value". The requirements
                                                             are ANDed.
                                                           type: object
-                                                          additionalProperties:
-                                                            type: string
+                                                      type: object
                                                     namespaces:
                                                       description: namespaces specifies
                                                         which namespaces the labelSelector
                                                         applies to (matches against);
                                                         null or empty list means "this
                                                         pod's namespace"
-                                                      type: array
                                                       items:
                                                         type: string
+                                                      type: array
                                                     topologyKey:
                                                       description: This pod should
                                                         be co-located (affinity) or
@@ -1118,12 +1100,16 @@ spec:
                                                         running. Empty topologyKey
                                                         is not allowed.
                                                       type: string
+                                                  required:
+                                                  - topologyKey
+                                                  type: object
+                                                type: array
+                                            type: object
                                           podAntiAffinity:
                                             description: Describes pod anti-affinity
                                               scheduling rules (e.g. avoid putting
                                               this pod in the same node, zone, etc.
                                               as some other pod(s)).
-                                            type: object
                                             properties:
                                               preferredDuringSchedulingIgnoredDuringExecution:
                                                 description: The scheduler will prefer
@@ -1144,30 +1130,21 @@ spec:
                                                   has pods which matches the corresponding
                                                   podAffinityTerm; the node(s) with
                                                   the highest sum are the most preferred.
-                                                type: array
                                                 items:
                                                   description: The weights of all
                                                     of the matched WeightedPodAffinityTerm
                                                     fields are added per-node to find
                                                     the most preferred node(s)
-                                                  type: object
-                                                  required:
-                                                  - podAffinityTerm
-                                                  - weight
                                                   properties:
                                                     podAffinityTerm:
                                                       description: Required. A pod
                                                         affinity term, associated
                                                         with the corresponding weight.
-                                                      type: object
-                                                      required:
-                                                      - topologyKey
                                                       properties:
                                                         labelSelector:
                                                           description: A label query
                                                             over a set of resources,
                                                             in this case pods.
-                                                          type: object
                                                           properties:
                                                             matchExpressions:
                                                               description: matchExpressions
@@ -1175,7 +1152,6 @@ spec:
                                                                 selector requirements.
                                                                 The requirements are
                                                                 ANDed.
-                                                              type: array
                                                               items:
                                                                 description: A label
                                                                   selector requirement
@@ -1184,10 +1160,6 @@ spec:
                                                                   a key, and an operator
                                                                   that relates the
                                                                   key and values.
-                                                                type: object
-                                                                required:
-                                                                - key
-                                                                - operator
                                                                 properties:
                                                                   key:
                                                                     description: key
@@ -1223,10 +1195,17 @@ spec:
                                                                       replaced during
                                                                       a strategic
                                                                       merge patch.
-                                                                    type: array
                                                                     items:
                                                                       type: string
+                                                                    type: array
+                                                                required:
+                                                                - key
+                                                                - operator
+                                                                type: object
+                                                              type: array
                                                             matchLabels:
+                                                              additionalProperties:
+                                                                type: string
                                                               description: matchLabels
                                                                 is a map of {key,value}
                                                                 pairs. A single {key,value}
@@ -1240,8 +1219,7 @@ spec:
                                                                 "value". The requirements
                                                                 are ANDed.
                                                               type: object
-                                                              additionalProperties:
-                                                                type: string
+                                                          type: object
                                                         namespaces:
                                                           description: namespaces
                                                             specifies which namespaces
@@ -1249,9 +1227,9 @@ spec:
                                                             to (matches against);
                                                             null or empty list means
                                                             "this pod's namespace"
-                                                          type: array
                                                           items:
                                                             type: string
+                                                          type: array
                                                         topologyKey:
                                                           description: This pod should
                                                             be co-located (affinity)
@@ -1268,13 +1246,21 @@ spec:
                                                             is running. Empty topologyKey
                                                             is not allowed.
                                                           type: string
+                                                      required:
+                                                      - topologyKey
+                                                      type: object
                                                     weight:
                                                       description: weight associated
                                                         with matching the corresponding
                                                         podAffinityTerm, in the range
                                                         1-100.
-                                                      type: integer
                                                       format: int32
+                                                      type: integer
+                                                  required:
+                                                  - podAffinityTerm
+                                                  - weight
+                                                  type: object
+                                                type: array
                                               requiredDuringSchedulingIgnoredDuringExecution:
                                                 description: If the anti-affinity
                                                   requirements specified by this field
@@ -1290,7 +1276,6 @@ spec:
                                                   elements, the lists of nodes corresponding
                                                   to each podAffinityTerm are intersected,
                                                   i.e. all terms must be satisfied.
-                                                type: array
                                                 items:
                                                   description: Defines a set of pods
                                                     (namely those matching the labelSelector
@@ -1302,22 +1287,17 @@ spec:
                                                     of the label with key <topologyKey>
                                                     matches that of any node on which
                                                     a pod of the set of pods is running
-                                                  type: object
-                                                  required:
-                                                  - topologyKey
                                                   properties:
                                                     labelSelector:
                                                       description: A label query over
                                                         a set of resources, in this
                                                         case pods.
-                                                      type: object
                                                       properties:
                                                         matchExpressions:
                                                           description: matchExpressions
                                                             is a list of label selector
                                                             requirements. The requirements
                                                             are ANDed.
-                                                          type: array
                                                           items:
                                                             description: A label selector
                                                               requirement is a selector
@@ -1325,10 +1305,6 @@ spec:
                                                               a key, and an operator
                                                               that relates the key
                                                               and values.
-                                                            type: object
-                                                            required:
-                                                            - key
-                                                            - operator
                                                             properties:
                                                               key:
                                                                 description: key is
@@ -1359,10 +1335,17 @@ spec:
                                                                   array is replaced
                                                                   during a strategic
                                                                   merge patch.
-                                                                type: array
                                                                 items:
                                                                   type: string
+                                                                type: array
+                                                            required:
+                                                            - key
+                                                            - operator
+                                                            type: object
+                                                          type: array
                                                         matchLabels:
+                                                          additionalProperties:
+                                                            type: string
                                                           description: matchLabels
                                                             is a map of {key,value}
                                                             pairs. A single {key,value}
@@ -1375,17 +1358,16 @@ spec:
                                                             only "value". The requirements
                                                             are ANDed.
                                                           type: object
-                                                          additionalProperties:
-                                                            type: string
+                                                      type: object
                                                     namespaces:
                                                       description: namespaces specifies
                                                         which namespaces the labelSelector
                                                         applies to (matches against);
                                                         null or empty list means "this
                                                         pod's namespace"
-                                                      type: array
                                                       items:
                                                         type: string
+                                                      type: array
                                                     topologyKey:
                                                       description: This pod should
                                                         be co-located (affinity) or
@@ -1401,24 +1383,28 @@ spec:
                                                         running. Empty topologyKey
                                                         is not allowed.
                                                       type: string
+                                                  required:
+                                                  - topologyKey
+                                                  type: object
+                                                type: array
+                                            type: object
+                                        type: object
                                       nodeSelector:
+                                        additionalProperties:
+                                          type: string
                                         description: 'NodeSelector is a selector which
                                           must be true for the pod to fit on a node.
                                           Selector which must match a node''s labels
                                           for the pod to be scheduled on that node.
                                           More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                                         type: object
-                                        additionalProperties:
-                                          type: string
                                       tolerations:
                                         description: If specified, the pod's tolerations.
-                                        type: array
                                         items:
                                           description: The pod this Toleration is
                                             attached to tolerates any taint that matches
                                             the triple <key,value,effect> using the
                                             matching operator <operator>.
-                                          type: object
                                           properties:
                                             effect:
                                               description: Effect indicates the taint
@@ -1453,8 +1439,8 @@ spec:
                                                 (do not evict). Zero and negative
                                                 values will be treated as 0 (evict
                                                 immediately) by the system.
-                                              type: integer
                                               format: int64
+                                              type: integer
                                             value:
                                               description: Value is the taint value
                                                 the toleration matches to. If the
@@ -1462,14 +1448,19 @@ spec:
                                                 be empty, otherwise just a regular
                                                 string.
                                               type: string
+                                          type: object
+                                        type: array
+                                    type: object
+                                type: object
                               serviceType:
                                 description: Optional service type for Kubernetes
                                   solver service
                                 type: string
+                            type: object
+                        type: object
                       selector:
                         description: Selector selects a set of DNSNames on the Certificate
                           resource that should be solved using this challenge solver.
-                        type: object
                         properties:
                           dnsNames:
                             description: List of DNSNames that this solver will be
@@ -1479,9 +1470,9 @@ spec:
                               value, the solver with the most matching labels in matchLabels
                               will be selected. If neither has more matches, the solver
                               defined earlier in the list will be selected.
-                            type: array
                             items:
                               type: string
+                            type: array
                           dnsZones:
                             description: List of DNSZones that this solver will be
                               used to solve. The most specific DNS zone match specified
@@ -1492,45 +1483,41 @@ spec:
                               the solver with the most matching labels in matchLabels
                               will be selected. If neither has more matches, the solver
                               defined earlier in the list will be selected.
-                            type: array
                             items:
                               type: string
+                            type: array
                           matchLabels:
+                            additionalProperties:
+                              type: string
                             description: A label selector that is used to refine the
                               set of certificate's that this challenge solver will
                               apply to.
                             type: object
-                            additionalProperties:
-                              type: string
-            ca:
-              type: object
+                        type: object
+                    type: object
+                  type: array
               required:
-              - secretName
+              - privateKeySecretRef
+              - server
+              type: object
+            ca:
               properties:
                 secretName:
                   description: SecretName is the name of the secret used to sign Certificates
                     issued by this Issuer.
                   type: string
+              required:
+              - secretName
+              type: object
             selfSigned:
               type: object
             vault:
-              type: object
-              required:
-              - auth
-              - path
-              - server
               properties:
                 auth:
                   description: Vault authentication
-                  type: object
                   properties:
                     appRole:
                       description: This Secret contains a AppRole and Secret
-                      type: object
-                      required:
-                      - path
-                      - roleId
-                      - secretRef
                       properties:
                         path:
                           description: Where the authentication path is mounted in
@@ -1539,9 +1526,6 @@ spec:
                         roleId:
                           type: string
                         secretRef:
-                          type: object
-                          required:
-                          - name
                           properties:
                             key:
                               description: The key of the secret to select from. Must
@@ -1551,13 +1535,17 @@ spec:
                               description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 TODO: Add other useful fields. apiVersion, kind, uid?'
                               type: string
+                          required:
+                          - name
+                          type: object
+                      required:
+                      - path
+                      - roleId
+                      - secretRef
+                      type: object
                     kubernetes:
                       description: This contains a Role and Secret with a ServiceAccount
                         token to authenticate with vault.
-                      type: object
-                      required:
-                      - role
-                      - secretRef
                       properties:
                         mountPath:
                           description: The Vault mountPath here is the mount path
@@ -1575,9 +1563,6 @@ spec:
                           description: The required Secret field containing a Kubernetes
                             ServiceAccount JWT used for authenticating with Vault.
                             Use of 'ambient credentials' is not supported.
-                          type: object
-                          required:
-                          - name
                           properties:
                             key:
                               description: The key of the secret to select from. Must
@@ -1587,11 +1572,15 @@ spec:
                               description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 TODO: Add other useful fields. apiVersion, kind, uid?'
                               type: string
+                          required:
+                          - name
+                          type: object
+                      required:
+                      - role
+                      - secretRef
+                      type: object
                     tokenSecretRef:
                       description: This Secret contains the Vault token key
-                      type: object
-                      required:
-                      - name
                       properties:
                         key:
                           description: The key of the secret to select from. Must
@@ -1601,39 +1590,39 @@ spec:
                           description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                             TODO: Add other useful fields. apiVersion, kind, uid?'
                           type: string
+                      required:
+                      - name
+                      type: object
+                  type: object
                 caBundle:
                   description: Base64 encoded CA bundle to validate Vault server certificate.
                     Only used if the Server URL is using HTTPS protocol. This parameter
                     is ignored for plain HTTP protocol connection. If not set the
                     system root certificates are used to validate the TLS connection.
-                  type: string
                   format: byte
+                  type: string
                 path:
                   description: Vault URL path to the certificate role
                   type: string
                 server:
                   description: Server is the vault connection address
                   type: string
+              required:
+              - auth
+              - path
+              - server
+              type: object
             venafi:
               description: VenafiIssuer describes issuer configuration details for
                 Venafi Cloud.
-              type: object
-              required:
-              - zone
               properties:
                 cloud:
                   description: Cloud specifies the Venafi cloud configuration settings.
                     Only one of TPP or Cloud may be specified.
-                  type: object
-                  required:
-                  - apiTokenSecretRef
                   properties:
                     apiTokenSecretRef:
                       description: APITokenSecretRef is a secret key selector for
                         the Venafi Cloud API token.
-                      type: object
-                      required:
-                      - name
                       properties:
                         key:
                           description: The key of the secret to select from. Must
@@ -1643,52 +1632,60 @@ spec:
                           description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                             TODO: Add other useful fields. apiVersion, kind, uid?'
                           type: string
+                      required:
+                      - name
+                      type: object
                     url:
                       description: URL is the base URL for Venafi Cloud
                       type: string
+                  required:
+                  - apiTokenSecretRef
+                  type: object
                 tpp:
                   description: TPP specifies Trust Protection Platform configuration
                     settings. Only one of TPP or Cloud may be specified.
-                  type: object
-                  required:
-                  - credentialsRef
-                  - url
                   properties:
                     caBundle:
-                      description: CABundle is a PEM encoded TLS certifiate to use
+                      description: CABundle is a PEM encoded TLS certificate to use
                         to verify connections to the TPP instance. If specified, system
                         roots will not be used and the issuing CA for the TPP instance
                         must be verifiable using the provided root. If not specified,
                         the connection will be verified using the cert-manager system
                         root certificates.
-                      type: string
                       format: byte
+                      type: string
                     credentialsRef:
                       description: CredentialsRef is a reference to a Secret containing
                         the username and password for the TPP server. The secret must
                         contain two keys, 'username' and 'password'.
-                      type: object
-                      required:
-                      - name
                       properties:
                         name:
                           description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                             TODO: Add other useful fields. apiVersion, kind, uid?'
                           type: string
+                      required:
+                      - name
+                      type: object
                     url:
                       description: URL is the base URL for the Venafi TPP instance
                       type: string
+                  required:
+                  - credentialsRef
+                  - url
+                  type: object
                 zone:
                   description: Zone is the Venafi Policy Zone to use for this issuer.
                     All requests made to the Venafi platform will be restricted by
                     the named zone policy. This field is required.
                   type: string
+              required:
+              - zone
+              type: object
+          type: object
         status:
           description: IssuerStatus contains status information about an Issuer
-          type: object
           properties:
             acme:
-              type: object
               properties:
                 lastRegisteredEmail:
                   description: LastRegisteredEmail is the email associated with the
@@ -1699,21 +1696,17 @@ spec:
                   description: URI is the unique account identifier, which can also
                     be used to retrieve account details from the CA
                   type: string
+              type: object
             conditions:
-              type: array
               items:
                 description: IssuerCondition contains condition information for an
                   Issuer.
-                type: object
-                required:
-                - status
-                - type
                 properties:
                   lastTransitionTime:
                     description: LastTransitionTime is the timestamp corresponding
                       to the last status change of this condition.
-                    type: string
                     format: date-time
+                    type: string
                   message:
                     description: Message is a human readable description of the details
                       of the last transition, complementing reason.
@@ -1725,15 +1718,20 @@ spec:
                   status:
                     description: Status of the condition, one of ('True', 'False',
                       'Unknown').
-                    type: string
                     enum:
                     - "True"
                     - "False"
                     - Unknown
+                    type: string
                   type:
                     description: Type of the condition, currently ('Ready').
                     type: string
-  version: v1alpha2
+                required:
+                - status
+                - type
+                type: object
+              type: array
+          type: object
   versions:
   - name: v1alpha2
     served: true
